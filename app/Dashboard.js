@@ -2,11 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-// ============================================================================
-// TOPSTEPX MARKET STRUCTURE DASHBOARD
-// Uses TopstepX API as the data source for key levels, VWAP, and session data
-// ============================================================================
-
 // --- Session time constants (Eastern Time) ---
 const RTH_OPEN_H = 9, RTH_OPEN_M = 30;
 const RTH_CLOSE_H = 16, RTH_CLOSE_M = 0;
