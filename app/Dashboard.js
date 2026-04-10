@@ -1,6 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+// ============================================================================
+// TOPSTEPX MARKET STRUCTURE DASHBOARD
+// Uses TopstepX API as the data source for key levels, VWAP, and session data
+// ============================================================================
 
 // --- Session time constants (Eastern Time) ---
 const RTH_OPEN_H = 9, RTH_OPEN_M = 30;
@@ -17,42 +22,6 @@ function parseBarTime(t) {
   if (typeof t === "string") return new Date(t);
   if (typeof t === "number") return new Date(t);
   return new Date();
-}
-
-function classifyBar(barTime) {
-  const et = toET(barTime);
-  const h = et.getHours(), m = et.getMinutes();
-  const mins = h * 60 + m;
-  const rthOpen = RTH_OPEN_H * 60 + RTH_OPEN_M;
-  const rthClose = RTH_CLOSE_H * 60 + RTH_CLOSE_M;
-  if (mins >= rthOpen && mins < rthClose) return "rth";
-  return "globex";
-}
-
-function getSessionStart() {
-  const now = toET(new Date());
-  const h = now.getHours();
-  const sessionOpen = new Date(now);
-  sessionOpen.setHours(GLOBEX_OPEN_H, 0, 0, 0);
-  if (h < GLOBEX_OPEN_H) sessionOpen.setDate(sessionOpen.getDate() - 1);
-  return sessionOpen;
-}
-
-function getTodayRTHStart() {
-  const now = toET(new Date());
-  const rthStart = new Date(now);
-  rthStart.setHours(RTH_OPEN_H, RTH_OPEN_M, 0, 0);
-  return rthStart;
-}
-
-function getYesterdayRTH() {
-  const now = toET(new Date());
-  const end = new Date(now);
-  end.setHours(RTH_CLOSE_H, RTH_CLOSE_M, 0, 0);
-  if (now.getHours() < RTH_CLOSE_H) end.setDate(end.getDate() - 1);
-  const start = new Date(end);
-  start.setHours(RTH_OPEN_H, RTH_OPEN_M, 0, 0);
-  return { start, end };
 }
 
 // --- Level Calculations ---
@@ -126,35 +95,27 @@ function calcAllLevels(priorRTH, overnight, todayRTH, sessionBars) {
 
 // --- Session clock ---
 // CME Futures schedule (Eastern Time):
-//   • Opens Sunday 6:00 PM ET
-//   • Daily maintenance halt 5:00 PM – 6:00 PM ET (Mon–Thu)
-//   • Closes Friday 5:00 PM ET
-//   • RTH: 9:30 AM – 4:00 PM ET
-const DAILY_HALT_H = 17; // 5:00 PM ET close/halt
-const WEEKLY_CLOSE_H = 17; // Friday 5:00 PM ET
+//   Opens Sunday 6:00 PM ET
+//   Daily maintenance halt 5:00 PM - 6:00 PM ET (Mon-Thu)
+//   Closes Friday 5:00 PM ET
+//   RTH: 9:30 AM - 4:00 PM ET
+const DAILY_HALT_H = 17;
+const WEEKLY_CLOSE_H = 17;
 
 function isMarketOpen() {
   const now = toET(new Date());
-  const day = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  const day = now.getDay();
   const h = now.getHours(), m = now.getMinutes();
   const mins = h * 60 + m;
-  const haltStart = DAILY_HALT_H * 60; // 5:00 PM = 1020
+  const haltStart = DAILY_HALT_H * 60;
 
-  // Saturday: always closed
   if (day === 6) return { open: false, reason: "WEEKEND" };
-
-  // Sunday: closed until 6:00 PM ET
   if (day === 0) {
     if (mins < GLOBEX_OPEN_H * 60) return { open: false, reason: "WEEKEND" };
     return { open: true };
   }
-
-  // Friday: closed after 5:00 PM ET
   if (day === 5 && mins >= haltStart) return { open: false, reason: "WEEKEND" };
-
-  // Mon–Fri: daily halt 5:00 PM – 6:00 PM ET
   if (mins >= haltStart && mins < GLOBEX_OPEN_H * 60) return { open: false, reason: "DAILY_HALT" };
-
   return { open: true };
 }
 
@@ -164,17 +125,15 @@ function getNextOpenTime() {
   const h = now.getHours(), m = now.getMinutes();
   const mins = h * 60 + m;
 
-  // Daily halt Mon–Thu: reopens at 6:00 PM same day
   if (day >= 1 && day <= 4 && mins >= DAILY_HALT_H * 60 && mins < GLOBEX_OPEN_H * 60) {
     return { label: "Reopens today 6:00 PM ET", minutesUntil: GLOBEX_OPEN_H * 60 - mins };
   }
 
-  // Friday after 5 PM, all Saturday, Sunday before 6 PM → reopens Sunday 6 PM ET
   let daysUntilSunday;
   if (day === 5) daysUntilSunday = 2;
   else if (day === 6) daysUntilSunday = 1;
   else if (day === 0 && mins < GLOBEX_OPEN_H * 60) daysUntilSunday = 0;
-  else daysUntilSunday = 7 - day; // fallback
+  else daysUntilSunday = 7 - day;
 
   const minsLeftToday = 1440 - mins;
   const minutesUntil = minsLeftToday + (daysUntilSunday > 0 ? (daysUntilSunday - 1) * 1440 : 0) + GLOBEX_OPEN_H * 60;
@@ -224,7 +183,7 @@ function getSessionInfo() {
   return { session: "CLOSED", minutesIn: 0, minutesLeft: 0, pctComplete: 0 };
 }
 
-// --- Mock Economic Calendar (FRED/ForexFactory would be external) ---
+// --- Mock Economic Calendar ---
 function getMockCalendar() {
   return [
     { time: "08:30", impact: "high", event: "CPI m/m", forecast: "0.3%", previous: "0.4%", actual: null },
@@ -237,8 +196,6 @@ function getMockCalendar() {
 
 // ============================================================================
 // MOCK DATA ENGINE
-// Simulates what the TopstepX API would return
-// In production, replace with actual API calls
 // ============================================================================
 
 const INSTRUMENTS = [
@@ -301,7 +258,7 @@ function generateInstrumentData(inst) {
 }
 
 // ============================================================================
-// COMPONENTS
+// THEME
 // ============================================================================
 
 const COLORS = {
@@ -325,6 +282,139 @@ const COLORS = {
   orange: "#f97316",
   separator: "#1a2332",
 };
+
+const MONO = "'JetBrains Mono', monospace";
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: ${COLORS.bg}; }
+  ::-webkit-scrollbar-thumb { background: ${COLORS.separator}; border-radius: 3px; }
+
+  .dash-root {
+    min-height: 100vh;
+    background: ${COLORS.bg};
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    color: ${COLORS.text};
+  }
+
+  .dash-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid ${COLORS.separator};
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, ${COLORS.card}, ${COLORS.bg});
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .dash-content {
+    padding: 16px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+  }
+
+  .instruments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 14px;
+    align-content: start;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .instrument-tabs {
+    display: none;
+  }
+
+  .instrument-card-wrap {
+    animation: fadeIn 0.4s ease both;
+  }
+
+  /* ---- Mobile ---- */
+  @media (max-width: 768px) {
+    .dash-header {
+      padding: 12px 16px;
+    }
+    .dash-header-title { font-size: 14px !important; }
+    .dash-header-sub { font-size: 9px !important; }
+    .dash-content {
+      padding: 12px 12px;
+    }
+
+    .dash-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+      order: -1;
+    }
+
+    .instrument-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .instrument-card-wrap {
+      display: none;
+    }
+    .instrument-card-wrap.active {
+      display: block;
+    }
+
+    .instruments-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .econ-row-details {
+      flex-direction: column;
+      gap: 2px !important;
+    }
+  }
+
+  /* ---- Tablet ---- */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .dash-grid {
+      grid-template-columns: 1fr 280px;
+    }
+    .instruments-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
 function PriceLocation({ price, levels }) {
   if (!price || !levels?.vwap) return null;
@@ -350,9 +440,9 @@ function LevelRow({ label, value, color, highlight, proximity }) {
       background: highlight ? "rgba(34,211,238,0.04)" : "transparent",
       borderRadius: 2, transition: "all 0.3s ease",
     }}>
-      <span style={{ color: COLORS.textDim, fontSize: 11, fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+      <span style={{ color: COLORS.textDim, fontSize: 11, fontWeight: 500, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
       <span style={{
-        color: color || COLORS.text, fontFamily: "'JetBrains Mono', monospace",
+        color: color || COLORS.text, fontFamily: MONO,
         fontSize: 12, fontWeight: 600, letterSpacing: "0.02em",
       }}>
         {value != null ? value.toFixed(2) : "—"}
@@ -373,7 +463,7 @@ function SectionHeader({ label, color, icon }) {
       <span style={{
         fontSize: 9, fontWeight: 700, color,
         textTransform: "uppercase", letterSpacing: "0.12em",
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: MONO,
       }}>{label}</span>
     </div>
   );
@@ -392,7 +482,7 @@ function MiniChart({ data }) {
   const min = Math.min(...allVals);
   const max = Math.max(...allVals);
   const range = max - min || 1;
-  const h = 120, w = 200, pad = 8;
+  const h = 120, pad = 8;
 
   const yPos = (v) => pad + ((max - v) / range) * (h - pad * 2);
 
@@ -407,28 +497,28 @@ function MiniChart({ data }) {
   const priceY = yPos(data.last);
 
   return (
-    <svg width={w} height={h} style={{ display: "block", margin: "8px auto 4px" }}>
+    <svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "auto", margin: "8px auto 4px" }}>
       <defs>
         <linearGradient id={`grad-${data.symbol}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={data.change >= 0 ? COLORS.green : COLORS.red} stopOpacity="0.15" />
           <stop offset="100%" stopColor="transparent" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <rect x={0} y={0} width={w} height={h} fill="transparent" rx={4} />
+      <rect x={0} y={0} width={200} height={h} fill="transparent" rx={4} />
       {levelLines.map((l, i) => {
         const y = yPos(l.val);
         return (
           <g key={i}>
-            <line x1={30} y1={y} x2={w - 4} y2={y} stroke={l.color} strokeWidth={0.7} strokeDasharray="3,3" opacity={0.5} />
+            <line x1={30} y1={y} x2={196} y2={y} stroke={l.color} strokeWidth={0.7} strokeDasharray="3,3" opacity={0.5} />
             <text x={2} y={y + 3} fill={l.color} fontSize={7} fontFamily="monospace" opacity={0.7}>{l.label}</text>
           </g>
         );
       })}
-      <line x1={30} y1={priceY} x2={w - 4} y2={priceY} stroke={data.change >= 0 ? COLORS.green : COLORS.red} strokeWidth={1.5} opacity={0.8} />
-      <circle cx={w - 8} cy={priceY} r={3} fill={data.change >= 0 ? COLORS.green : COLORS.red}>
+      <line x1={30} y1={priceY} x2={196} y2={priceY} stroke={data.change >= 0 ? COLORS.green : COLORS.red} strokeWidth={1.5} opacity={0.8} />
+      <circle cx={192} cy={priceY} r={3} fill={data.change >= 0 ? COLORS.green : COLORS.red}>
         <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
       </circle>
-      <text x={w - 14} y={priceY - 6} fill={data.change >= 0 ? COLORS.green : COLORS.red} fontSize={8} fontFamily="monospace" fontWeight="bold" textAnchor="end">
+      <text x={186} y={priceY - 6} fill={data.change >= 0 ? COLORS.green : COLORS.red} fontSize={8} fontFamily="monospace" fontWeight="bold" textAnchor="end">
         {data.last?.toFixed(2)}
       </text>
     </svg>
@@ -467,14 +557,14 @@ function InstrumentCard({ data }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
         <div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-0.02em" }}>{data.symbol}</span>
+            <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: MONO, letterSpacing: "-0.02em" }}>{data.symbol}</span>
             <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 500 }}>{data.name}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 4 }}>
-            <span style={{ fontSize: 28, fontWeight: 800, color: "#fff", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-0.03em" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 28, fontWeight: 800, color: "#fff", fontFamily: MONO, letterSpacing: "-0.03em" }}>
               {data.last?.toFixed(2)}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: accent, fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: accent, fontFamily: MONO }}>
               {isPos ? "+" : ""}{data.change?.toFixed(2)}
               <span style={{ opacity: 0.7, marginLeft: 4, fontSize: 11 }}>
                 ({isPos ? "+" : ""}{data.change_pct?.toFixed(2)}%)
@@ -544,24 +634,24 @@ function SessionClock() {
       background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`,
       borderRadius: 10, padding: "14px 18px",
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}66` }} />
-          <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: MONO, letterSpacing: "0.08em" }}>
             {info.session}
           </span>
           {info.session === "CLOSED" && info.reason && (
-            <span style={{ fontSize: 9, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: 9, color: COLORS.textDim, fontFamily: MONO }}>
               {info.reason === "WEEKEND" ? "WEEKEND" : "DAILY HALT"}
             </span>
           )}
         </div>
-        <span style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{ fontSize: 11, color: COLORS.textDim, fontFamily: MONO }}>
           {new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit" })} ET
         </span>
       </div>
       {info.session === "CLOSED" ? (
-        <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", textAlign: "center", padding: "6px 0" }}>
+        <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: MONO, textAlign: "center", padding: "6px 0" }}>
           {info.nextOpen ? (
             <>
               <span style={{ color: COLORS.text }}>{info.nextOpen.label}</span>
@@ -573,7 +663,7 @@ function SessionClock() {
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textDim, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textDim, marginBottom: 6, fontFamily: MONO }}>
             <span>{formatTime(info.minutesIn)} in</span>
             <span>{formatTime(info.minutesLeft)} left</span>
           </div>
@@ -599,32 +689,33 @@ function EconCalendar({ events }) {
       background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`,
       borderRadius: 10, padding: "14px 18px",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 14 }}>📅</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: MONO, letterSpacing: "0.04em" }}>
           ECONOMIC CALENDAR
         </span>
-        <span style={{ fontSize: 10, color: COLORS.textDim, marginLeft: "auto", fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{ fontSize: 10, color: COLORS.textDim, marginLeft: "auto", fontFamily: MONO }}>
           {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
         </span>
       </div>
       {displayEvents.map((evt, i) => (
         <div key={i} style={{
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: 8,
           padding: "7px 0", borderBottom: i < displayEvents.length - 1 ? `1px solid ${COLORS.separator}` : "none",
+          flexWrap: "wrap",
         }}>
           <span style={{
-            fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: COLORS.textDim,
+            fontFamily: MONO, fontSize: 11, color: COLORS.textDim,
             minWidth: 42, fontWeight: 600,
           }}>{evt.time}</span>
           <span style={{
             fontSize: 8, fontWeight: 800, color: impactColors[evt.impact],
             border: `1px solid ${impactColors[evt.impact]}44`,
             borderRadius: 3, padding: "1px 4px", minWidth: 30, textAlign: "center",
-            fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em",
+            fontFamily: MONO, letterSpacing: "0.08em",
           }}>{impactLabels[evt.impact]}</span>
-          <span style={{ color: COLORS.text, fontSize: 12, flex: 1, fontWeight: 500 }}>{evt.event}</span>
-          <div style={{ display: "flex", gap: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
+          <span style={{ color: COLORS.text, fontSize: 12, flex: 1, fontWeight: 500, minWidth: 100 }}>{evt.event}</span>
+          <div className="econ-row-details" style={{ display: "flex", gap: 12, fontFamily: MONO, fontSize: 10 }}>
             <span style={{ color: COLORS.textDim }}>F: <span style={{ color: COLORS.text }}>{evt.forecast}</span></span>
             <span style={{ color: COLORS.textDim }}>P: <span style={{ color: COLORS.text }}>{evt.previous}</span></span>
             {evt.actual && <span style={{ color: COLORS.green }}>A: {evt.actual}</span>}
@@ -635,12 +726,60 @@ function EconCalendar({ events }) {
   );
 }
 
+function InstrumentTabs({ instruments, instrumentData, activeSymbol, onSelect }) {
+  return (
+    <div className="instrument-tabs">
+      {instruments.map((inst) => {
+        const data = instrumentData[inst.symbol];
+        const isActive = inst.symbol === activeSymbol;
+        const isPos = data ? data.change >= 0 : true;
+        const accent = isPos ? COLORS.green : COLORS.red;
+
+        return (
+          <button
+            key={inst.symbol}
+            onClick={() => onSelect(inst.symbol)}
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              background: isActive ? COLORS.card : "transparent",
+              border: "none",
+              borderBottom: isActive ? `2px solid ${COLORS.accent}` : `2px solid ${COLORS.separator}`,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              transition: "all 0.2s",
+              minWidth: 0,
+            }}
+          >
+            <span style={{
+              fontSize: 13, fontWeight: 800, fontFamily: MONO,
+              color: isActive ? "#fff" : COLORS.textDim,
+              letterSpacing: "-0.02em",
+            }}>
+              {inst.symbol}
+            </span>
+            {data && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, fontFamily: MONO,
+                color: accent,
+              }}>
+                {isPos ? "+" : ""}{data.change_pct?.toFixed(2)}%
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ============================================================================
 // MAIN DASHBOARD
 // ============================================================================
 
-// Read from environment variables — set in Vercel dashboard or .env.local
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
@@ -661,12 +800,11 @@ export default function MarketStructureDashboard() {
   const [instrumentData, setInstrumentData] = useState({});
   const [calendar, setCalendar] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [activeSymbol, setActiveSymbol] = useState("NQ");
 
   const loadData = useCallback(async () => {
     try {
-      // Fetch levels directly from Supabase
       const levels = await supabaseGet("levels_cache", "select=*&order=symbol.asc");
-
       if (!levels || levels.length === 0) throw new Error("No levels data");
 
       const newData = {};
@@ -687,7 +825,6 @@ export default function MarketStructureDashboard() {
       }
       setInstrumentData(newData);
 
-      // Fetch calendar
       try {
         const today = new Date().toISOString().split("T")[0];
         const events = await supabaseGet("econ_events", `select=*&date=eq.${today}&order=time_et.asc`);
@@ -703,7 +840,6 @@ export default function MarketStructureDashboard() {
 
       setLastUpdate(new Date());
     } catch (e) {
-      // Supabase not reachable or no data — fall back to simulated
       console.log("Supabase not reachable, using simulated data:", e.message);
       const newData = {};
       for (const inst of INSTRUMENTS) {
@@ -722,46 +858,24 @@ export default function MarketStructureDashboard() {
   }, [loadData]);
 
   return (
-    <div style={{
-      minHeight: "100vh", background: COLORS.bg,
-      fontFamily: "'Segoe UI', 'Helvetica Neue', sans-serif",
-      color: COLORS.text,
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: ${COLORS.bg}; }
-        ::-webkit-scrollbar-thumb { background: ${COLORS.separator}; border-radius: 3px; }
-      `}</style>
+    <div className="dash-root">
+      <style>{CSS}</style>
 
       {/* Header */}
-      <div style={{
-        padding: "16px 24px", borderBottom: `1px solid ${COLORS.separator}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        background: `linear-gradient(180deg, ${COLORS.card}, ${COLORS.bg})`,
-      }}>
+      <div className="dash-header">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 17, fontWeight: 800, color: "#fff", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-0.02em" }}>
+            <span className="dash-header-title" style={{ fontSize: 17, fontWeight: 800, color: "#fff", fontFamily: MONO, letterSpacing: "-0.02em" }}>
               MARKET STRUCTURE
             </span>
-            <span style={{ fontSize: 10, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em", marginTop: 2 }}>
+            <span className="dash-header-sub" style={{ fontSize: 10, color: COLORS.textDim, fontFamily: MONO, letterSpacing: "0.1em", marginTop: 2 }}>
               KEY LEVELS DASHBOARD
             </span>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           {lastUpdate && (
-            <span style={{ fontSize: 10, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: 10, color: COLORS.textDim, fontFamily: MONO }}>
               Updated {lastUpdate.toLocaleTimeString()}
             </span>
           )}
@@ -769,7 +883,7 @@ export default function MarketStructureDashboard() {
             background: "rgba(34,211,238,0.1)", border: `1px solid ${COLORS.accentDim}`,
             borderRadius: 6, padding: "6px 14px", cursor: "pointer",
             color: COLORS.accent, fontSize: 11, fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em",
+            fontFamily: MONO, letterSpacing: "0.06em",
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => { e.target.style.background = "rgba(34,211,238,0.2)"; }}
@@ -781,22 +895,32 @@ export default function MarketStructureDashboard() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "16px 24px", maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16 }}>
-          {/* Instruments Grid */}
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
-            gap: 14, alignContent: "start",
-          }}>
+      <div className="dash-content">
+
+        {/* Mobile instrument tabs */}
+        <InstrumentTabs
+          instruments={INSTRUMENTS}
+          instrumentData={instrumentData}
+          activeSymbol={activeSymbol}
+          onSelect={setActiveSymbol}
+        />
+
+        <div className="dash-grid">
+          {/* Instruments */}
+          <div className="instruments-grid">
             {INSTRUMENTS.map((inst, i) => (
-              <div key={inst.symbol} style={{ animation: `fadeIn 0.4s ease ${i * 0.08}s both` }}>
+              <div
+                key={inst.symbol}
+                className={`instrument-card-wrap ${inst.symbol === activeSymbol ? "active" : ""}`}
+                style={{ animationDelay: `${i * 0.08}s` }}
+              >
                 <InstrumentCard data={instrumentData[inst.symbol]} />
               </div>
             ))}
           </div>
 
           {/* Sidebar */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="sidebar">
             <SessionClock />
             <EconCalendar events={calendar} />
           </div>
