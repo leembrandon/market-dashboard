@@ -130,7 +130,76 @@ function calcAllLevels(priorRTH, overnight, todayRTH, sessionBars) {
 }
 
 // --- Session clock ---
+// CME Futures schedule (Eastern Time):
+//   • Opens Sunday 6:00 PM ET
+//   • Daily maintenance halt 5:00 PM – 6:00 PM ET (Mon–Thu)
+//   • Closes Friday 5:00 PM ET
+//   • RTH: 9:30 AM – 4:00 PM ET
+const DAILY_HALT_H = 17; // 5:00 PM ET close/halt
+const WEEKLY_CLOSE_H = 17; // Friday 5:00 PM ET
+
+function isMarketOpen() {
+  const now = toET(new Date());
+  const day = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  const h = now.getHours(), m = now.getMinutes();
+  const mins = h * 60 + m;
+  const haltStart = DAILY_HALT_H * 60; // 5:00 PM = 1020
+
+  // Saturday: always closed
+  if (day === 6) return { open: false, reason: "WEEKEND" };
+
+  // Sunday: closed until 6:00 PM ET
+  if (day === 0) {
+    if (mins < GLOBEX_OPEN_H * 60) return { open: false, reason: "WEEKEND" };
+    return { open: true };
+  }
+
+  // Friday: closed after 5:00 PM ET
+  if (day === 5 && mins >= haltStart) return { open: false, reason: "WEEKEND" };
+
+  // Mon–Fri: daily halt 5:00 PM – 6:00 PM ET
+  if (mins >= haltStart && mins < GLOBEX_OPEN_H * 60) return { open: false, reason: "DAILY_HALT" };
+
+  return { open: true };
+}
+
+function getNextOpenTime() {
+  const now = toET(new Date());
+  const day = now.getDay();
+  const h = now.getHours(), m = now.getMinutes();
+  const mins = h * 60 + m;
+
+  // Daily halt Mon–Thu: reopens at 6:00 PM same day
+  if (day >= 1 && day <= 4 && mins >= DAILY_HALT_H * 60 && mins < GLOBEX_OPEN_H * 60) {
+    return { label: "Reopens today 6:00 PM ET", minutesUntil: GLOBEX_OPEN_H * 60 - mins };
+  }
+
+  // Friday after 5 PM, all Saturday, Sunday before 6 PM → reopens Sunday 6 PM ET
+  let daysUntilSunday;
+  if (day === 5) daysUntilSunday = 2;
+  else if (day === 6) daysUntilSunday = 1;
+  else if (day === 0 && mins < GLOBEX_OPEN_H * 60) daysUntilSunday = 0;
+  else daysUntilSunday = 7 - day; // fallback
+
+  const minsLeftToday = 1440 - mins;
+  const minutesUntil = minsLeftToday + (daysUntilSunday > 0 ? (daysUntilSunday - 1) * 1440 : 0) + GLOBEX_OPEN_H * 60;
+  return { label: "Reopens Sunday 6:00 PM ET", minutesUntil };
+}
+
 function getSessionInfo() {
+  const market = isMarketOpen();
+  if (!market.open) {
+    const next = getNextOpenTime();
+    return {
+      session: "CLOSED",
+      reason: market.reason,
+      minutesIn: 0,
+      minutesLeft: 0,
+      pctComplete: 0,
+      nextOpen: next,
+    };
+  }
+
   const now = toET(new Date());
   const h = now.getHours(), m = now.getMinutes();
   const mins = h * 60 + m;
@@ -486,21 +555,41 @@ function SessionClock() {
           <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em" }}>
             {info.session}
           </span>
+          {info.session === "CLOSED" && info.reason && (
+            <span style={{ fontSize: 9, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+              {info.reason === "WEEKEND" ? "WEEKEND" : "DAILY HALT"}
+            </span>
+          )}
         </div>
         <span style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
           {new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit" })} ET
         </span>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textDim, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>
-        <span>{formatTime(info.minutesIn)} in</span>
-        <span>{formatTime(info.minutesLeft)} left</span>
-      </div>
-      <div style={{ height: 4, background: COLORS.separator, borderRadius: 2, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", width: `${info.pctComplete}%`, background: `linear-gradient(90deg, ${color}, ${color}aa)`,
-          borderRadius: 2, transition: "width 1s linear",
-        }} />
-      </div>
+      {info.session === "CLOSED" ? (
+        <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", textAlign: "center", padding: "6px 0" }}>
+          {info.nextOpen ? (
+            <>
+              <span style={{ color: COLORS.text }}>{info.nextOpen.label}</span>
+              <span style={{ marginLeft: 8, color: COLORS.textDim }}>({formatTime(info.nextOpen.minutesUntil)})</span>
+            </>
+          ) : (
+            "Markets closed"
+          )}
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textDim, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>
+            <span>{formatTime(info.minutesIn)} in</span>
+            <span>{formatTime(info.minutesLeft)} left</span>
+          </div>
+          <div style={{ height: 4, background: COLORS.separator, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${info.pctComplete}%`, background: `linear-gradient(90deg, ${color}, ${color}aa)`,
+              borderRadius: 2, transition: "width 1s linear",
+            }} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -551,73 +640,6 @@ function EconCalendar({ events }) {
   );
 }
 
-function ApiConfigPanel({ config, setConfig }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLive = config.mode === "live";
-  return (
-    <div style={{
-      background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`,
-      borderRadius: 10, padding: "12px 18px", marginBottom: 16,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-        onClick={() => setExpanded(!expanded)}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12 }}>⚙️</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em" }}>
-            DATA SOURCE
-          </span>
-          <span style={{
-            fontSize: 9, padding: "2px 6px", borderRadius: 4,
-            background: isLive ? COLORS.greenDim : COLORS.goldDim,
-            color: isLive ? COLORS.green : COLORS.gold,
-            fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-          }}>{isLive ? "● LIVE" : config.mode === "connecting" ? "CONNECTING..." : "SIMULATED"}</span>
-        </div>
-        <span style={{ color: COLORS.textDim, fontSize: 12, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
-      </div>
-      {expanded && (
-        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, padding: "8px 12px", background: COLORS.bg, borderRadius: 6 }}>
-            {isLive ? (
-              <>
-                <div style={{ color: COLORS.green, marginBottom: 4, fontWeight: 700 }}>Reading from Supabase</div>
-                <div>• Your local backend writes fresh levels every 60s</div>
-                <div>• This dashboard reads directly from Supabase</div>
-                <div>• No backend server needed for the frontend</div>
-              </>
-            ) : (
-              <>
-                <div style={{ color: COLORS.gold, marginBottom: 4, fontWeight: 700 }}>Using simulated data</div>
-                <div>• Paste your Supabase anon key in the code</div>
-                <div>• Run supabase_public_read.sql in the SQL Editor</div>
-                <div>• Start your backend: python server.py</div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DataSourceBadge({ isLive }) {
-  const color = isLive ? COLORS.green : COLORS.gold;
-  const label = isLive ? "LIVE DATA" : "SIMULATED";
-  return (
-    <div style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      padding: "4px 10px", borderRadius: 6,
-      background: `${color}14`, border: `1px solid ${color}44`,
-    }}>
-      <div style={{ width: 5, height: 5, borderRadius: "50%", background: color }}>
-        <div style={{ width: 5, height: 5, borderRadius: "50%", background: color, animation: "pulse 2s infinite" }} />
-      </div>
-      <span style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em" }}>
-        {label}
-      </span>
-    </div>
-  );
-}
 
 // ============================================================================
 // MAIN DASHBOARD
@@ -644,7 +666,6 @@ export default function MarketStructureDashboard() {
   const [instrumentData, setInstrumentData] = useState({});
   const [calendar, setCalendar] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [apiConfig, setApiConfig] = useState({ connected: false, mode: "connecting" });
 
   const loadData = useCallback(async () => {
     try {
@@ -670,7 +691,6 @@ export default function MarketStructureDashboard() {
         };
       }
       setInstrumentData(newData);
-      setApiConfig({ connected: true, mode: "live" });
 
       // Fetch calendar
       try {
@@ -689,16 +709,13 @@ export default function MarketStructureDashboard() {
       setLastUpdate(new Date());
     } catch (e) {
       // Supabase not reachable or no data — fall back to simulated
-      if (apiConfig.mode !== "simulated") {
-        console.log("Supabase not reachable, using simulated data:", e.message);
-      }
+      console.log("Supabase not reachable, using simulated data:", e.message);
       const newData = {};
       for (const inst of INSTRUMENTS) {
         newData[inst.symbol] = generateInstrumentData(inst);
       }
       setInstrumentData(newData);
       setCalendar(getMockCalendar());
-      setApiConfig({ connected: false, mode: "simulated" });
       setLastUpdate(new Date());
     }
   }, []);
@@ -746,7 +763,6 @@ export default function MarketStructureDashboard() {
               KEY LEVELS DASHBOARD
             </span>
           </div>
-          <DataSourceBadge isLive={apiConfig.mode === "live"} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {lastUpdate && (
@@ -771,8 +787,6 @@ export default function MarketStructureDashboard() {
 
       {/* Content */}
       <div style={{ padding: "16px 24px", maxWidth: 1400, margin: "0 auto" }}>
-        <ApiConfigPanel config={apiConfig} setConfig={setApiConfig} />
-
         <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16 }}>
           {/* Instruments Grid */}
           <div style={{
@@ -790,31 +804,6 @@ export default function MarketStructureDashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SessionClock />
             <EconCalendar events={calendar} />
-
-            {/* Status */}
-            <div style={{
-              background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`,
-              borderRadius: 10, padding: "14px 18px",
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: apiConfig.mode === "live" ? COLORS.green : COLORS.gold, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", marginBottom: 8 }}>
-                {apiConfig.mode === "live" ? "● CONNECTED" : "SIMULATED MODE"}
-              </div>
-              <div style={{ fontSize: 11, color: COLORS.textDim, lineHeight: 1.7 }}>
-                {apiConfig.mode === "live" ? (
-                  <>
-                    Reading live levels from <span style={{ color: COLORS.accent }}>Supabase</span>.
-                    Your local <span style={{ color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>server.py</span> keeps
-                    the data fresh. Dashboard polls every 15s.
-                  </>
-                ) : (
-                  <>
-                    Paste your Supabase <span style={{ color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>anon key</span> at
-                    the top of the code and run <span style={{ color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>supabase_public_read.sql</span> to
-                    enable public read access. Then start <span style={{ color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>python server.py</span> to populate data.
-                  </>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
