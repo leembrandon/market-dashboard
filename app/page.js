@@ -152,7 +152,7 @@ export default function HomePage() {
 
       <footer className={s.footer}>
         <p>LevelSight analyzes every session and gives you the probability. Not a chart — just the number.</p>
-        <p className={s.footerSub}>Data from TopstepX · Updated daily after market close</p>
+        <p className={s.footerSub}>Updated daily after market close</p>
       </footer>
     </div>
   );
