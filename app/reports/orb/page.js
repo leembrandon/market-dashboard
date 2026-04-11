@@ -140,10 +140,7 @@ export default function ORBReportPage() {
       )}
       {!loading && !error && !data && (
         <div className={s.stateBox}>
-          <p className={s.stateText}>No data for these filters.</p>
-          <p className={s.stateSubtext}>
-            Run <code>python backfill.py</code> and <code>python stats_engine.py</code> to seed data.
-          </p>
+          <p className={s.stateText}>No data available for these filters.</p>
         </div>
       )}
 
