@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { fetchSession, fetchSessionList } from "../../lib/data";
@@ -55,6 +55,14 @@ function Section({ title, icon, color, children }) {
 }
 
 export default function SessionDetailPage() {
+  return (
+    <Suspense fallback={<div className={s.page}><div className={s.stateBox}><div className={s.spinner} /><p className={s.stateText}>Loading session...</p></div></div>}>
+      <SessionDetailInner />
+    </Suspense>
+  );
+}
+
+function SessionDetailInner() {
   const searchParams = useSearchParams();
   const [symbol, setSymbol] = useState(searchParams.get("symbol") || "NQ");
   const [sessionType, setSessionType] = useState(searchParams.get("session") || "ny");
