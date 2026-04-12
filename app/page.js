@@ -79,9 +79,14 @@ export default function HomePage() {
             <h1 className={s.logo}><span className={s.logoAccent}>Level</span>Sight</h1>
             <p className={s.tagline}>The answer, not the chart.</p>
           </div>
-          <Link href="/learn" className={s.learnLink}>
-            <span className={s.learnIcon}>📖</span> Learn the Setups
-          </Link>
+          <div className={s.headerLinks}>
+            <Link href="/today" className={s.todayLink}>
+              <span className={s.todayIcon}>◈</span> Today's Brief
+            </Link>
+            <Link href="/learn" className={s.learnLink}>
+              <span className={s.learnIcon}>📖</span> Learn the Setups
+            </Link>
+          </div>
         </div>
       </header>
 
