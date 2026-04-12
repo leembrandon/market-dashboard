@@ -29,6 +29,32 @@
   letter-spacing: 0.5px;
 }
 
+/* Header links */
+.headerLinks {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Today link */
+.todayLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.todayLink:hover { opacity: 0.85; }
+.todayIcon { font-size: 14px; }
+
 /* Learn link */
 .learnLink {
   display: inline-flex;
@@ -216,6 +242,9 @@
   .logo { font-size: 24px; }
   .tagline { font-size: 12px; }
   .tickerBtn { padding: 6px 14px; font-size: 13px; }
+  .headerLinks { flex-wrap: wrap; }
+  .todayLink { font-size: 12px; padding: 6px 12px; }
+  .learnLink { font-size: 12px; padding: 6px 12px; }
   .cardHeroNumber,
   .cardHeroLoading,
   .cardHeroEmpty { font-size: 36px; }
