@@ -1,0 +1,291 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* Nav */
+.nav { margin-bottom: 16px; }
+.backLink {
+  font-size: 14px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+}
+.backLink:hover { color: var(--text-primary); }
+.backLogo { font-weight: 700; font-size: 15px; }
+
+/* Header */
+.header {
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+}
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.subtitle {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+
+/* Report selector bar */
+.reportBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.reportBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.reportBtn:hover { border-color: var(--border-hover); }
+.reportBtnActive { background: var(--bg-hover); }
+.reportBtnIcon {
+  font-size: 20px;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+.reportBtnLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Content area */
+.content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Sections */
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 16px;
+}
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  letter-spacing: -0.3px;
+}
+.sectionIcon { font-size: 18px; }
+
+/* Body text */
+.bodyText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 20px 0;
+}
+
+/* Key terms */
+.termGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.termRow {
+  display: flex;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+  align-items: baseline;
+}
+.termLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+.termDef {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* Steps */
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.stepNum {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.stepText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  padding-top: 3px;
+}
+
+/* Mistakes */
+.mistakeList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mistakeCard {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.mistakeBad {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.mistakeX {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.mistakeBad > span:last-child {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.mistakeFix {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-left: 24px;
+}
+.mistakeCheck {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.mistakeFix > span:last-child {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* CTA */
+.cta {
+  text-align: center;
+  padding: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+}
+.ctaText {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 14px 0;
+}
+.ctaBtn {
+  display: inline-block;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+.ctaBtn:hover { opacity: 0.85; }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-top: 8px;
+}
+
+/* ─── Responsive: Tablet ─── */
+@media (max-width: 768px) {
+  .page { padding: 20px 16px; }
+  .title { font-size: 22px; }
+  .reportBar { grid-template-columns: repeat(2, 1fr); }
+  .section { padding: 20px; }
+  .sectionTitle { font-size: 16px; }
+  .termRow { flex-direction: column; gap: 2px; }
+  .termLabel { min-width: auto; }
+}
+
+/* ─── Responsive: Mobile ─── */
+@media (max-width: 480px) {
+  .page { padding: 16px 12px; }
+  .title { font-size: 20px; }
+  .subtitle { font-size: 12px; }
+  .reportBar { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .reportBtn { padding: 12px 6px; }
+  .reportBtnIcon { font-size: 18px; }
+  .reportBtnLabel { font-size: 10px; }
+  .section { padding: 16px; }
+  .sectionTitle { font-size: 15px; gap: 8px; }
+  .bodyText { font-size: 13px; }
+  .stepText { font-size: 13px; }
+  .stepNum { width: 24px; height: 24px; font-size: 12px; }
+  .mistakeCard { padding: 14px; }
+  .mistakeBad > span:last-child { font-size: 13px; }
+  .mistakeFix > span:last-child { font-size: 12px; }
+  .cta { padding: 20px; }
+}

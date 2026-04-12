@@ -1,0 +1,215 @@
+/* EducationAccordion — matches LevelSight design tokens */
+
+.accordion {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.accordionIcon { font-size: 14px; }
+.accordionTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+/* Accordion buttons */
+.accordionBtn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.accordionBtn:last-of-type { border-bottom: none; }
+.accordionBtnOpen { background: var(--bg-hover); }
+.accordionBtn:hover { background: var(--bg-hover); }
+
+.accordionBtnInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.accordionBtnIcon {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.chevron {
+  font-size: 20px;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+  font-weight: 400;
+}
+.chevronOpen { transform: rotate(90deg); }
+
+/* Accordion body */
+.accordionBody {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Body text */
+.bodyText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0 0 16px 0;
+}
+
+/* Key terms */
+.termGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.termRow {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  align-items: baseline;
+}
+.termLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+.termDef {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Steps */
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.stepNum {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.stepText {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  padding-top: 2px;
+}
+
+/* Mistakes */
+.mistakeList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mistakeCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.mistakeBad {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.mistakeX {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.mistakeBad > span:last-child {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.mistakeFix {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-left: 23px;
+}
+.mistakeCheck {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.mistakeFix > span:last-child {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ─── Responsive: Tablet ─── */
+@media (max-width: 768px) {
+  .accordionBtn { padding: 12px 16px; font-size: 13px; }
+  .accordionBody { padding: 16px; }
+  .termRow { flex-direction: column; gap: 2px; }
+  .termLabel { min-width: auto; }
+}
+
+/* ─── Responsive: Mobile ─── */
+@media (max-width: 480px) {
+  .accordionBtn { padding: 12px 14px; font-size: 13px; }
+  .accordionHeader { padding: 10px 14px; }
+  .accordionBody { padding: 14px; }
+  .bodyText { font-size: 13px; }
+  .stepText { font-size: 12px; }
+  .termLabel { font-size: 11px; }
+  .termDef { font-size: 12px; }
+  .mistakeCard { padding: 12px; }
+}
